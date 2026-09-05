@@ -1,0 +1,10 @@
+{
+  "name": "scientific-communication-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Scripts used by the scientific-communication skill.",
+  "scripts": {
+    "test": "node --test scripts/mark-jargon.test.mjs"
+  }
+}

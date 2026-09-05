@@ -1,0 +1,6 @@
+interface:
+  display_name: "Horizon Jest to Vitest"
+  short_description: "Migrate the next Horizon unit-test batch"
+  default_prompt: "Use $horizon-jest-to-vitest to migrate the next ~250 eligible Horizon Jest unit tests to Vitest."
+policy:
+  allow_implicit_invocation: false
