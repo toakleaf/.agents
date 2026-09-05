@@ -16,15 +16,73 @@ const MARKERS = {
   ansi: ["\u001b[33m", "\u001b[0m"],
 };
 const BANK_FILES = {
-  1: "1st-grade-words.csv",
-  5: "5th-grade-words.csv",
+  1: ["1st-grade-words.csv"],
+  5: ["1st-grade-words.csv", "5th-grade-words.csv"],
+  12: ["1st-grade-words.csv", "5th-grade-words.csv", "12th-grade-words.csv"],
 };
-const DEFAULT_LEVEL = 5;
+const DEFAULT_LEVEL = 12;
+const MIN_DERIVATION_BASE_LENGTH = 4;
+const MAX_DERIVATION_EXTRA_LENGTH = 3;
+const IRREGULAR_PLURALS = new Map(Object.entries({
+  appendix: ["appendices", "appendixes"],
+  bacterium: ["bacteria"],
+  bureau: ["bureaus", "bureaux"],
+  cactus: ["cacti", "cactuses"],
+  calf: ["calves"],
+  child: ["children"],
+  crisis: ["crises"],
+  criterion: ["criteria"],
+  curriculum: ["curricula", "curriculums"],
+  datum: ["data"],
+  diagnosis: ["diagnoses"],
+  die: ["dice"],
+  dwarf: ["dwarfs", "dwarves"],
+  echo: ["echoes"],
+  elf: ["elves"],
+  focus: ["foci", "focuses"],
+  foot: ["feet"],
+  fungus: ["fungi", "funguses"],
+  goose: ["geese"],
+  half: ["halves"],
+  hero: ["heroes"],
+  hoof: ["hoofs", "hooves"],
+  index: ["indexes", "indices"],
+  knife: ["knives"],
+  leaf: ["leaves"],
+  life: ["lives"],
+  loaf: ["loaves"],
+  louse: ["lice"],
+  man: ["men"],
+  matrix: ["matrices", "matrixes"],
+  medium: ["media", "mediums"],
+  mouse: ["mice"],
+  nucleus: ["nuclei"],
+  oasis: ["oases"],
+  ox: ["oxen"],
+  person: ["people", "persons"],
+  phenomenon: ["phenomena"],
+  potato: ["potatoes"],
+  scarf: ["scarfs", "scarves"],
+  self: ["selves"],
+  shelf: ["shelves"],
+  syllabus: ["syllabi", "syllabuses"],
+  thief: ["thieves"],
+  thesis: ["theses"],
+  tomato: ["tomatoes"],
+  tooth: ["teeth"],
+  vertex: ["vertices"],
+  veto: ["vetoes"],
+  wharf: ["wharfs", "wharves"],
+  wife: ["wives"],
+  wolf: ["wolves"],
+  woman: ["women"],
+  zero: ["zeroes", "zeros"],
+}));
 const HELP_TEXT = `Usage:
-  mark-jargon [--level <1|5>] (--text <text> | --input <file>) [options]
+  mark-jargon [--level <1|5|12>] (--text <text> | --input <file>) [options]
 
 Options:
-  -l, --level <1|5>       Reading level used for the check. Default: 5.
+  -l, --level <1|5|12>    Reading level used for the check. Default: 12.
       --text <text>       Text to check.
   -i, --input <file>      UTF-8 text file to check.
   -o, --output <file>     Write to a file instead of stdout.
@@ -63,23 +121,38 @@ export function normalizeWord(word) {
 }
 
 export function loadWordBank(level, referencesDirectory) {
-  const bankFilename = BANK_FILES[level];
-  if (!bankFilename) {
+  const bankFilenames = BANK_FILES[level];
+  if (!bankFilenames) {
     throw new Error(`Unsupported reading level: ${level}`);
   }
 
-  const csvPath = path.join(referencesDirectory, bankFilename);
-  const lines = fs.readFileSync(csvPath, "utf8").split(/\r?\n/);
-  if (lines[0] !== "word,age_of_acquisition,frequency_per_million") {
-    throw new Error(`Unexpected word-bank header in ${csvPath}`);
+  const words = new Set();
+  for (const bankFilename of bankFilenames) {
+    const csvPath = path.join(referencesDirectory, bankFilename);
+    const lines = fs.readFileSync(csvPath, "utf8").split(/\r?\n/);
+    if (lines[0] !== "word,age_of_acquisition,frequency_per_million") {
+      throw new Error(`Unexpected word-bank header in ${csvPath}`);
+    }
+
+    for (const line of lines.slice(1)) {
+      if (!line) continue;
+      words.add(line.slice(0, line.indexOf(",")));
+    }
   }
 
-  const words = new Set();
-  for (const line of lines.slice(1)) {
-    if (!line) continue;
-    words.add(line.slice(0, line.indexOf(",")));
+  for (const word of [...words]) {
+    for (const plural of pluralForms(word)) words.add(plural);
   }
+
   return words;
+}
+
+function pluralForms(word) {
+  const irregular = IRREGULAR_PLURALS.get(word);
+  if (irregular) return irregular;
+  if (/[^aeiou]y$/.test(word)) return [`${word.slice(0, -1)}ies`];
+  if (/(?:s|x|z|ch|sh)$/.test(word)) return [`${word}es`];
+  return [`${word}s`];
 }
 
 function simpleForms(word) {
@@ -116,19 +189,51 @@ function simpleForms(word) {
   return forms;
 }
 
+function hasExactForm(word, wordBank) {
+  return [...simpleForms(word)].some((form) => wordBank.has(form));
+}
+
+function hasShortDerivation(word, wordBank) {
+  for (const form of simpleForms(word)) {
+    const minimumLength = Math.max(
+      MIN_DERIVATION_BASE_LENGTH,
+      form.length - MAX_DERIVATION_EXTRA_LENGTH,
+    );
+    for (let length = form.length - 1; length >= minimumLength; length -= 1) {
+      for (let start = 0; start + length <= form.length; start += 1) {
+        if (wordBank.has(form.slice(start, start + length))) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function hasTwoWordCompound(word, wordBank) {
+  for (const form of simpleForms(word)) {
+    for (let split = 2; split <= form.length - 2; split += 1) {
+      if (
+        hasExactForm(form.slice(0, split), wordBank)
+        && hasExactForm(form.slice(split), wordBank)
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function isAllowed(word, wordBank) {
   const normalized = normalizeWord(word);
-  if ([...simpleForms(normalized)].some((form) => wordBank.has(form))) {
-    return true;
-  }
+  if (hasExactForm(normalized, wordBank)) return true;
 
   if (normalized.includes("-")) {
     return normalized
       .split("-")
-      .every((part) => [...simpleForms(part)].some((form) => wordBank.has(form)));
+      .every((part) => hasExactForm(part, wordBank) || hasShortDerivation(part, wordBank));
   }
 
-  return false;
+  return hasShortDerivation(normalized, wordBank)
+    || hasTwoWordCompound(normalized, wordBank);
 }
 
 function markWords(text, options) {
@@ -199,8 +304,8 @@ function parseArguments(rawArguments) {
   }
 
   if (arguments_.help) return arguments_;
-  if (!["1", "5"].includes(String(arguments_.level))) {
-    throw new Error("Set --level to 1 or 5.");
+  if (!["1", "5", "12"].includes(String(arguments_.level))) {
+    throw new Error("Set --level to 1, 5, or 12.");
   }
   arguments_.level = Number(arguments_.level);
 

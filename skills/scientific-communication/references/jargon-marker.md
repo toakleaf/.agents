@@ -13,7 +13,7 @@ The script accepts exactly one input source:
 
 It writes marked text to stdout by default. Set `--output path` to write it to a file instead.
 
-The script uses the fifth-grade word bank by default. Set `--level 1` to use the first-grade bank. Words absent from the selected bank are wrapped in double brackets by default. Use `--style markdown`, `--style html`, or `--style ansi` for another built-in marker. Set both `--prefix` and `--suffix` to define custom markers.
+The script uses the twelfth-grade word bank by default. Set `--level 1` for the first-grade bank or `--level 5` for the fifth-grade bank. Words absent from the selected bank are wrapped in double brackets by default. Use `--style markdown`, `--style html`, or `--style ansi` for another built-in marker. Set both `--prefix` and `--suffix` to define custom markers.
 
 ```bash
 node scripts/mark-jargon.mjs \
@@ -23,7 +23,7 @@ node scripts/mark-jargon.mjs \
   --style html
 ```
 
-Matching is case-insensitive. The script accepts common plurals, possessives, contractions, and hyphenated forms when their base words are in the selected bank.
+Matching is case-insensitive. Each CSV stores only the words added at that grade level, and the marker combines the selected level with all lower levels. The script accepts regular and common irregular plurals, possessives, contractions, and hyphenated forms when their base words are in the selected bank. It also accepts a derivation when a listed base has at least four letters and the full word adds no more than three letters. Closed compounds such as `shoebox` can match two listed words.
 
 Markdown code, links, URLs, and HTML tags are left unchanged by default. Pass `--no-protect-markup` to check them too. Pass `--ignore-capitalized` to leave capitalized words unmarked when they should be treated as proper nouns.
 

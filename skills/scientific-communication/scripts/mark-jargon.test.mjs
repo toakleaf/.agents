@@ -6,6 +6,8 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { isAllowed, loadWordBank } from "./mark-jargon.mjs";
+
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const script = path.join(directory, "mark-jargon.mjs");
 
@@ -13,6 +15,12 @@ function run(arguments_) {
   return spawnSync(process.execPath, [script, ...arguments_], {
     encoding: "utf8",
   });
+}
+
+function readStoredWords(filename) {
+  const csv = fs.readFileSync(filename, "utf8").trimEnd().split(/\r?\n/);
+  assert.equal(csv.shift(), "word,age_of_acquisition,frequency_per_million");
+  return new Set(csv.map((line) => line.slice(0, line.indexOf(","))));
 }
 
 test("marks a word outside the selected bank", () => {
@@ -28,10 +36,17 @@ test("uses different reading levels", () => {
   assert.equal(fifthGrade.stdout, "A cell.");
 });
 
-test("uses fifth grade when level is omitted", () => {
-  const result = run(["--text", "A cell."]);
+test("supports the twelfth-grade level", () => {
+  const fifthGrade = run(["--level", "5", "--text", "A client."]);
+  const twelfthGrade = run(["--level", "12", "--text", "A client."]);
+  assert.equal(fifthGrade.stdout, "A [[client]].");
+  assert.equal(twelfthGrade.stdout, "A client.");
+});
+
+test("uses twelfth grade when level is omitted", () => {
+  const result = run(["--text", "A client."]);
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout, "A cell.");
+  assert.equal(result.stdout, "A client.");
 });
 
 test("supports file input, file output, and custom markers", () => {
@@ -64,6 +79,71 @@ test("accepts simple word forms", () => {
   const result = run(["--level", "1", "--text", "Cats and dog's cat-like toys."]);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, "Cats and dog's cat-like toys.");
+});
+
+test("fifth grade includes every first-grade word", () => {
+  const references = path.resolve(directory, "..", "references");
+  const firstGrade = loadWordBank(1, references);
+  const fifthGrade = loadWordBank(5, references);
+  assert.deepEqual([...firstGrade].filter((word) => !fifthGrade.has(word)), []);
+});
+
+test("twelfth grade includes every lower-grade word", () => {
+  const references = path.resolve(directory, "..", "references");
+  const fifthGrade = loadWordBank(5, references);
+  const twelfthGrade = loadWordBank(12, references);
+  assert.deepEqual([...fifthGrade].filter((word) => !twelfthGrade.has(word)), []);
+});
+
+test("grade files store only new words", () => {
+  const references = path.resolve(directory, "..", "references");
+  const banks = [
+    readStoredWords(path.join(references, "1st-grade-words.csv")),
+    readStoredWords(path.join(references, "5th-grade-words.csv")),
+    readStoredWords(path.join(references, "12th-grade-words.csv")),
+  ];
+
+  for (let left = 0; left < banks.length; left += 1) {
+    for (let right = left + 1; right < banks.length; right += 1) {
+      assert.deepEqual([...banks[left]].filter((word) => banks[right].has(word)), []);
+    }
+  }
+});
+
+test("higher levels load lower-level banks additively", () => {
+  const references = fs.mkdtempSync(path.join(os.tmpdir(), "word-banks-"));
+  const header = "word,age_of_acquisition,frequency_per_million\n";
+  fs.writeFileSync(path.join(references, "1st-grade-words.csv"), `${header}alpha,7,1\n`);
+  fs.writeFileSync(path.join(references, "5th-grade-words.csv"), `${header}beta,11,1\n`);
+
+  const words = loadWordBank(5, references);
+  assert.equal(words.has("alpha"), true);
+  assert.equal(words.has("beta"), true);
+});
+
+test("adds regular and irregular plurals", () => {
+  const references = path.resolve(directory, "..", "references");
+  const firstGrade = loadWordBank(1, references);
+  assert.equal(isAllowed("cats", firstGrade), true);
+  assert.equal(isAllowed("boxes", firstGrade), true);
+  assert.equal(isAllowed("geese", firstGrade), true);
+  assert.equal(isAllowed("mice", firstGrade), true);
+});
+
+test("accepts derivations with at most three added letters", () => {
+  const words = new Set(["help", "cat"]);
+  assert.equal(isAllowed("helpful", words), true);
+  assert.equal(isAllowed("xhelpxx", words), true);
+  assert.equal(isAllowed("helpfully", words), false);
+  assert.equal(isAllowed("cats", words), true);
+  assert.equal(isAllowed("scat", words), false);
+});
+
+test("accepts hyphenations and two-word compounds", () => {
+  const words = new Set(["shoe", "box", "cat", "like"]);
+  assert.equal(isAllowed("shoebox", words), true);
+  assert.equal(isAllowed("cat-like", words), true);
+  assert.equal(isAllowed("shoehorn", words), false);
 });
 
 test("requires exactly one input source", () => {

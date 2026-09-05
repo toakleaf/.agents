@@ -21,8 +21,9 @@ SOURCE_SHA256 = "59f04580155c2a9f7e65ef8b0666d590afaacb7f79665c04b0149de21d0c00d
 MIN_FREQUENCY_PER_MILLION = 1.0
 WORD_PATTERN = re.compile(r"^[a-z]+(?:['-][a-z]+)*$")
 BANKS = {
-    "1st-grade-words.csv": 7.0,
-    "5th-grade-words.csv": 11.0,
+    "1st-grade-words.csv": (float("-inf"), 7.0),
+    "5th-grade-words.csv": (7.0, 11.0),
+    "12th-grade-words.csv": (11.0, 18.0),
 }
 
 
@@ -67,9 +68,10 @@ def load_rows(data: bytes) -> list[tuple[str, float, float]]:
 def write_bank(
     output_path: Path,
     rows: list[tuple[str, float, float]],
+    minimum_age: float,
     maximum_age: float,
 ) -> int:
-    selected = [row for row in rows if row[1] <= maximum_age]
+    selected = [row for row in rows if minimum_age < row[1] <= maximum_age]
     selected.sort(key=lambda row: (-row[2], row[0]))
 
     with output_path.open("w", encoding="utf-8", newline="") as output_file:
@@ -99,8 +101,8 @@ def main() -> None:
     rows = load_rows(data)
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    for filename, maximum_age in BANKS.items():
-        count = write_bank(args.output_dir / filename, rows, maximum_age)
+    for filename, (minimum_age, maximum_age) in BANKS.items():
+        count = write_bank(args.output_dir / filename, rows, minimum_age, maximum_age)
         print(f"Wrote {count} words to {args.output_dir / filename}")
 
 

@@ -2,11 +2,14 @@
 
 These word banks are practical estimates, not official school curricula. They use the age-of-acquisition ratings published by Victor Kuperman, Hans Stadthagen-Gonzalez, and Marc Brysbaert in 2012. Native English speakers estimated the age when they learned each word.
 
-The build script includes words that meet both limits:
+The build script assigns words to the first grade level whose age cutoff includes them:
 
 - First-grade bank: mean acquisition age of 7 or younger.
-- Fifth-grade bank: mean acquisition age of 11 or younger.
-- Both banks: at least one recorded use per million words.
+- Fifth-grade bank: mean acquisition age above 7 and no more than 11.
+- Twelfth-grade bank: mean acquisition age above 11 and no more than 18.
+- All banks: at least one recorded use per million words.
+
+The marker loads banks cumulatively. Fifth grade includes first grade, and twelfth grade includes both lower levels. Each CSV stores only its new words, so the files do not duplicate lower-grade entries.
 
 The script keeps lowercase English words with internal apostrophes or hyphens. It orders rows by frequency, with alphabetical ordering for ties. Each CSV records the word, mean acquisition age, and frequency per million words.
 

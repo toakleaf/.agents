@@ -2,7 +2,6 @@
 name: scientific-communication
 description: >-
   Summarize, rewrite, simplify, or explain complex, jargon-heavy text in plain language.
-disable-model-invocation: true
 ---
 
 # Scientific communication
@@ -14,21 +13,24 @@ For this skill, jargon is any word or acronym that is neither a proper noun nor 
 - Base all communication on words that readers recognize and understand.
 - Use the supplied word banks as practical estimates of word frequency and reading level.
 - Unless an exception below applies, every word must appear in the word bank for the chosen grade level.
-- Common forms of listed words are allowed. These include plurals, tenses, possessives such as "the dog's bone," contractions such as "don't," hyphenated forms such as "cat-like," and easily understood derivitives like "partial" or "helpful."
+- Grade-level banks store only the words added at that level. The marker combines them, so a higher level includes every word from each lower available level without duplicating entries in the CSV files.
+- Common forms of listed words are allowed. These include regular and irregular plurals, tenses, possessives such as "the dog's bone," contractions such as "don't," hyphenated forms such as "cat-like," and easily understood derivatives like "partial" or "helpful."
+- A derived word matches when it contains a listed base of at least four letters and has no more than three unmatched letters. A hyphenated word may match each part separately. A closed compound such as "shoebox" may match two listed words.
 - See [methodology](references/methodology.md) for the cutoffs, source, and limits of these estimates.
 
 Use `./scripts/mark-jargon.mjs` to mark words that are absent from a selected word bank. It accepts text from `--text` or a file from `--input`. It writes to stdout unless `--output` is set.
 
-The mark-jargon CLI is based on these word-bank references: (fifth-grade is default)
+The marker uses twelfth grade by default and supports these word-bank files:
 
 - [First-grade words](./references/1st-grade-words.csv)
 - [Fifth-grade words](./references/5th-grade-words.csv)
+- [Twelfth-grade words](./references/12th-grade-words.csv)
 
 See [jargon marker](./references/jargon-marker.md) for options and examples.
 
 ## Exceptions to rule 1
 
-### Explaination
+### Explanation
 
 Jargon can be used if and only if it is properly explained first. (Or very shortly after usage)
 
