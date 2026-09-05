@@ -14,7 +14,7 @@ For this skill, jargon is any word or acronym that is neither a proper noun nor 
 - Base all communication on words that readers recognize and understand.
 - Use the supplied word banks as practical estimates of word frequency and reading level.
 - Unless an exception below applies, every word must appear in the word bank for the chosen grade level.
-- Common forms of listed words are allowed. These include plurals, possessives such as "the dog's bone," contractions such as "don't," and hyphenated forms such as "cat-like."
+- Common forms of listed words are allowed. These include plurals, tenses, possessives such as "the dog's bone," contractions such as "don't," hyphenated forms such as "cat-like," and easily understood derivitives like "partial" or "helpful."
 - See [methodology](references/methodology.md) for the cutoffs, source, and limits of these estimates.
 
 Use `./scripts/mark-jargon.mjs` to mark words that are absent from a selected word bank. It accepts text from `--text` or a file from `--input`. It writes to stdout unless `--output` is set.
@@ -30,7 +30,7 @@ See [jargon marker](./references/jargon-marker.md) for options and examples.
 
 ### Explaination
 
-Jargon can be used if and only if it is properly explained first.
+Jargon can be used if and only if it is properly explained first. (Or very shortly after usage)
 
 1. Explain each jargon term in plain language before using it.
 2. Each later use must remain interchangeable with that definition. If substituting the definition makes the sentence unclear or incorrect, revise the definition or explain the term again.
